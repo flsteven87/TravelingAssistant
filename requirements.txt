@@ -1,32 +1,5 @@
-# Core dependencies
-requests==2.31.0
-python-dotenv==1.0.0
-click==8.1.7
-pydantic==2.5.2
-
-# Data processing
-pandas==2.1.3
-numpy==1.26.2
-
-# UI
-rich==13.7.0
-prompt-toolkit==3.0.43
-
-# API integrations
-googlemaps==4.10.0
-amadeus==9.0.0
-openai==1.3.7
-
-# Weather data
-pyowm==3.3.0
-
-# Database
-sqlalchemy==2.0.23
-alembic==1.12.1
-
-# Testing
-pytest==7.4.3
-pytest-cov==4.1.0
-
-# Documentation
-sphinx==7.2.6
+openai
+aiohttp
+streamlit
+python-dotenv
+pydantic
