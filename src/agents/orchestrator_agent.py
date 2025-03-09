@@ -6,39 +6,39 @@ import json
 from pydantic import BaseModel, Field
 from .base_agent import BaseAgent
 
-# 定義 Pydantic 模型用於 function calling
+# 定義 Pydantic 模型用於結構化輸出
 class UserIntentAnalysis(BaseModel):
     """分析用戶意圖的查詢參數"""
     query: str = Field(..., description="用戶的查詢文本")
-    needs_hotel_recommendation: bool = Field(False, description="用戶是否需要旅宿推薦")
-    needs_itinerary_planning: bool = Field(False, description="用戶是否需要行程規劃")
-    explanation: str = Field("", description="分析結果的解釋")
+    needs_hotel_recommendation: bool = Field(description="用戶是否需要旅宿推薦")
+    needs_itinerary_planning: bool = Field(description="用戶是否需要行程規劃")
+    explanation: str = Field(description="分析結果的解釋")
 
 class HotelParameters(BaseModel):
     """從用戶查詢中提取旅宿參數"""
     query: str = Field(..., description="用戶的查詢文本")
-    location: Optional[str] = Field(None, description="目的地，如縣市名稱")
-    check_in_date: Optional[str] = Field(None, description="入住日期，格式為 YYYY-MM-DD")
-    check_out_date: Optional[str] = Field(None, description="退房日期，格式為 YYYY-MM-DD")
-    adults: Optional[int] = Field(None, description="成人人數")
-    children: Optional[int] = Field(None, description="兒童人數")
-    budget_min: Optional[int] = Field(None, description="最低預算（每晚）")
-    budget_max: Optional[int] = Field(None, description="最高預算（每晚）")
-    hotel_types: Optional[List[str]] = Field(None, description="偏好的旅館類型")
-    facilities: Optional[List[str]] = Field(None, description="偏好的設施")
-    special_requirements: Optional[str] = Field(None, description="特殊需求")
+    location: Optional[str] = Field(description="目的地，如縣市名稱")
+    check_in_date: Optional[str] = Field(description="入住日期，格式為 YYYY-MM-DD")
+    check_out_date: Optional[str] = Field(description="退房日期，格式為 YYYY-MM-DD")
+    adults: Optional[int] = Field(description="成人人數")
+    children: Optional[int] = Field(description="兒童人數")
+    budget_min: Optional[int] = Field(description="最低預算（每晚）")
+    budget_max: Optional[int] = Field(description="最高預算（每晚）")
+    hotel_types: Optional[List[str]] = Field(description="偏好的旅館類型")
+    facilities: Optional[List[str]] = Field(description="偏好的設施")
+    special_requirements: Optional[str] = Field(description="特殊需求")
 
 class ItineraryParameters(BaseModel):
     """從用戶查詢中提取行程參數"""
     query: str = Field(..., description="用戶的查詢文本")
-    location: Optional[str] = Field(None, description="目的地，如縣市名稱")
-    start_date: Optional[str] = Field(None, description="開始日期，格式為 YYYY-MM-DD")
-    end_date: Optional[str] = Field(None, description="結束日期，格式為 YYYY-MM-DD")
-    duration: Optional[int] = Field(None, description="行程天數")
-    interests: Optional[List[str]] = Field(None, description="興趣愛好")
-    transportation: Optional[str] = Field(None, description="交通方式")
-    with_children: Optional[bool] = Field(None, description="是否有兒童")
-    budget: Optional[str] = Field(None, description="預算範圍")
+    location: Optional[str] = Field(description="目的地，如縣市名稱")
+    start_date: Optional[str] = Field(description="開始日期，格式為 YYYY-MM-DD")
+    end_date: Optional[str] = Field(description="結束日期，格式為 YYYY-MM-DD")
+    duration: Optional[int] = Field(description="行程天數")
+    interests: Optional[List[str]] = Field(description="興趣愛好")
+    transportation: Optional[str] = Field(description="交通方式")
+    with_children: Optional[bool] = Field(description="是否有兒童")
+    budget: Optional[str] = Field(description="預算範圍")
 
 class OrchestratorAgent(BaseAgent):
     """
@@ -65,64 +65,31 @@ class OrchestratorAgent(BaseAgent):
             description: Agent 的描述
             **kwargs: 其他參數，傳遞給父類
         """
-        super().__init__(
-            name=name,
-            role=role,
-            goal=goal,
-            backstory=backstory,
-            description=description,
-            **kwargs
-        )
+        super().__init__(name, role, goal, backstory, description, **kwargs)
         
         # 初始化 OpenAI 客戶端
         openai.api_key = self.api_key
         
-        # 用戶對話歷史
+        # 用戶對話歷史 - 確保這個屬性被正確初始化
         self.conversation_history = []
         
-        # 任務狀態
+        # 初始化任務狀態
         self.current_task = None
-        self.task_status = "idle"  # idle, processing, completed, failed
+        self.task_status = "idle"
         self.task_progress = 0.0
         self.task_result = None
         
-        # 快速回應時間限制 (5秒)
+        # 設置 LLM 模型
+        self.llm = os.getenv("OPENAI_MODEL", "gpt-4o")
+        
+        # 設置快速回應時間限制 (5秒)
         self.quick_response_time = 5
         
         # 完整回應時間限制 (30秒)
         self.complete_response_time = 30
         
-        # 定義 LLM 函數工具
-        self._define_llm_tools()
-    
-    def _define_llm_tools(self):
-        """定義 LLM 函數工具"""
-        self.llm_tools = [
-            {
-                "type": "function",
-                "function": {
-                    "name": "analyze_user_intent",
-                    "description": "分析用戶意圖，判斷用戶是否需要旅宿推薦或行程規劃",
-                    "parameters": UserIntentAnalysis.schema()
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "extract_hotel_parameters",
-                    "description": "從用戶查詢中提取旅宿參數",
-                    "parameters": HotelParameters.schema()
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "extract_itinerary_parameters",
-                    "description": "從用戶查詢中提取行程參數",
-                    "parameters": ItineraryParameters.schema()
-                }
-            }
-        ]
+        if self.verbose:
+            print(f"[OrchestratorAgent] 初始化完成，對話歷史已創建")
     
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -148,6 +115,10 @@ class OrchestratorAgent(BaseAgent):
         
         if self.verbose:
             print(f"[OrchestratorAgent] 開始執行任務: {user_query[:50]}...")
+        
+        # 確保 conversation_history 存在
+        if not hasattr(self, 'conversation_history'):
+            self.conversation_history = []
         
         # 添加到對話歷史
         self.conversation_history.append({"role": "user", "content": user_query})
@@ -228,9 +199,8 @@ class OrchestratorAgent(BaseAgent):
         
         # 記錄任務結束時間
         end_time = time.time()
-        
-        # 計算任務執行時間
         execution_time = end_time - start_time
+        
         if self.verbose:
             print(f"[OrchestratorAgent] 任務完成，執行時間: {execution_time:.2f}秒")
         
@@ -241,7 +211,12 @@ class OrchestratorAgent(BaseAgent):
             "execution_time": execution_time
         }
         
-        return self.task_result
+        # 返回結果
+        return {
+            "quick_response": quick_response,
+            "complete_response": complete_response,
+            "execution_time": execution_time
+        }
     
     def _analyze_user_intent(self, query: str) -> Dict[str, Any]:
         """
@@ -267,85 +242,59 @@ class OrchestratorAgent(BaseAgent):
             行程規劃相關的關鍵詞包括：行程、景點、玩什麼、去哪、去哪裡、遊玩、活動、規劃、安排等。
             
             請仔細分析用戶的查詢，判斷用戶的真實意圖。
+            
+            如果用戶提到了住宿、飯店、旅館等相關詞彙，或者詢問住哪裡，則 needs_hotel_recommendation 應為 true。
+            如果用戶提到了行程、景點、活動等相關詞彙，或者詢問去哪裡玩，則 needs_itinerary_planning 應為 true。
             """
             
             if self.verbose:
                 print(f"[_analyze_user_intent] 調用 OpenAI API...")
             
-            # 調用 OpenAI API
-            response = openai.chat.completions.create(
+            # 使用 OpenAI 的 parse 方法
+            client = openai.OpenAI(api_key=self.api_key)
+            completion = client.beta.chat.completions.parse(
                 model=self.llm,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ],
-                tools=self.llm_tools[:1],  # 只使用 analyze_user_intent 工具
-                tool_choice={"type": "function", "function": {"name": "analyze_user_intent"}},
+                response_format=UserIntentAnalysis,
                 temperature=0.1,
                 max_tokens=1000
             )
             
-            # 獲取 LLM 回應的內容
-            message = response.choices[0].message
+            # 獲取解析後的結果
+            result = completion.choices[0].message.parsed
             
             if self.verbose:
-                print(f"[_analyze_user_intent] 收到 OpenAI 回應: {message.content[:50]}...")
-                if message.tool_calls:
-                    print(f"[_analyze_user_intent] 工具調用: {message.tool_calls[0].function.name}")
+                print(f"[_analyze_user_intent] 分析結果: {result}")
             
-            # 如果有 tool_calls，處理它們
-            if message.tool_calls:
-                tool_call = message.tool_calls[0]
-                if tool_call.function.name == "analyze_user_intent":
-                    result = json.loads(tool_call.function.arguments)
+            # 如果用戶提到了旅館、飯店等，但 needs_hotel_recommendation 為 False，則修正
+            if not result.needs_hotel_recommendation:
+                hotel_keywords = ["旅館", "飯店", "住宿", "旅宿", "民宿", "酒店", "住哪", "住哪裡", "哪裡住"]
+                if any(keyword in query for keyword in hotel_keywords):
+                    result.needs_hotel_recommendation = True
                     if self.verbose:
-                        print(f"[_analyze_user_intent] 分析結果: {result}")
-                    return result
+                        print(f"[_analyze_user_intent] 修正 needs_hotel_recommendation 為 True，因為檢測到旅宿關鍵詞")
             
-            # 如果沒有 tool_calls，返回默認值
-            if self.verbose:
-                print(f"[_analyze_user_intent] 沒有工具調用，返回默認值")
+            # 如果用戶提到了行程、景點等，但 needs_itinerary_planning 為 False，則修正
+            if not result.needs_itinerary_planning:
+                itinerary_keywords = ["行程", "景點", "玩什麼", "去哪", "去哪裡", "遊玩", "活動", "規劃", "安排"]
+                if any(keyword in query for keyword in itinerary_keywords):
+                    result.needs_itinerary_planning = True
+                    if self.verbose:
+                        print(f"[_analyze_user_intent] 修正 needs_itinerary_planning 為 True，因為檢測到行程關鍵詞")
             
-            # 簡單的關鍵詞匹配作為備用方案
-            hotel_keywords = ["旅館", "飯店", "住宿", "旅宿", "民宿", "酒店", "住哪", "住哪裡", "哪裡住"]
-            itinerary_keywords = ["行程", "景點", "玩什麼", "去哪", "去哪裡", "遊玩", "活動", "規劃", "安排"]
-            
-            needs_hotel = any(keyword in query for keyword in hotel_keywords)
-            needs_itinerary = any(keyword in query for keyword in itinerary_keywords)
-            
-            result = {
-                "needs_hotel_recommendation": needs_hotel,
-                "needs_itinerary_planning": needs_itinerary,
-                "explanation": "使用關鍵詞匹配作為備用方案"
-            }
-            
-            if self.verbose:
-                print(f"[_analyze_user_intent] 備用分析結果: {result}")
-            
-            return result
+            # 將 Pydantic 模型轉換為字典
+            return result.model_dump()
         except Exception as e:
             if self.verbose:
                 print(f"[_analyze_user_intent] 分析用戶意圖時發生錯誤: {str(e)}")
                 import traceback
                 print(traceback.format_exc())
             
-            # 發生錯誤時，使用關鍵詞匹配作為備用方案
-            hotel_keywords = ["旅館", "飯店", "住宿", "旅宿", "民宿", "酒店", "住哪", "住哪裡", "哪裡住"]
-            itinerary_keywords = ["行程", "景點", "玩什麼", "去哪", "去哪裡", "遊玩", "活動", "規劃", "安排"]
-            
-            needs_hotel = any(keyword in query for keyword in hotel_keywords)
-            needs_itinerary = any(keyword in query for keyword in itinerary_keywords)
-            
-            result = {
-                "needs_hotel_recommendation": needs_hotel,
-                "needs_itinerary_planning": needs_itinerary,
-                "explanation": f"分析用戶意圖時發生錯誤: {str(e)}"
-            }
-            
-            if self.verbose:
-                print(f"[_analyze_user_intent] 錯誤後的備用分析結果: {result}")
-            
-            return result
+            # 重新拋出異常，不使用備用方案
+            raise
     
     def _extract_hotel_parameters_llm(self, query: str) -> Dict[str, Any]:
         """
@@ -380,121 +329,35 @@ class OrchestratorAgent(BaseAgent):
             if self.verbose:
                 print(f"[_extract_hotel_parameters_llm] 調用 OpenAI API...")
             
-            # 調用 OpenAI API
-            response = openai.chat.completions.create(
+            # 使用 OpenAI 的 parse 方法
+            client = openai.OpenAI()
+            completion = client.beta.chat.completions.parse(
                 model=self.llm,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ],
-                tools=self.llm_tools[1:2],  # 只使用 extract_hotel_parameters 工具
-                tool_choice={"type": "function", "function": {"name": "extract_hotel_parameters"}},
+                response_format=HotelParameters,
                 temperature=0.1,
                 max_tokens=1000
             )
             
-            # 獲取 LLM 回應的內容
-            message = response.choices[0].message
+            # 獲取解析後的結果
+            result = completion.choices[0].message.parsed
             
             if self.verbose:
-                print(f"[_extract_hotel_parameters_llm] 收到 OpenAI 回應: {message.content[:50]}...")
-                if message.tool_calls:
-                    print(f"[_extract_hotel_parameters_llm] 工具調用: {message.tool_calls[0].function.name}")
+                print(f"[_extract_hotel_parameters_llm] 提取結果: {result}")
             
-            # 如果有 tool_calls，處理它們
-            if message.tool_calls:
-                tool_call = message.tool_calls[0]
-                if tool_call.function.name == "extract_hotel_parameters":
-                    result = json.loads(tool_call.function.arguments)
-                    if self.verbose:
-                        print(f"[_extract_hotel_parameters_llm] 提取結果: {result}")
-                    return result
-            
-            # 如果沒有 tool_calls，返回默認值
-            if self.verbose:
-                print(f"[_extract_hotel_parameters_llm] 沒有工具調用，返回默認值")
-            
-            # 手動提取一些基本參數作為備用方案
-            location = None
-            check_in_date = None
-            check_out_date = None
-            adults = None
-            children = None
-            budget_min = None
-            budget_max = None
-            
-            # 簡單的正則表達式匹配
-            import re
-            
-            # 提取地點
-            location_match = re.search(r'去([\w]+)[市縣]', query)
-            if location_match:
-                location = location_match.group(1) + "市" if "市" in query else location_match.group(1) + "縣"
-            
-            # 提取日期
-            date_matches = re.findall(r'(\d{4}-\d{2}-\d{2})', query)
-            if len(date_matches) >= 2:
-                check_in_date = date_matches[0]
-                check_out_date = date_matches[1]
-            
-            # 提取人數
-            adults_match = re.search(r'(\d+)\s*位成人', query)
-            if adults_match:
-                adults = int(adults_match.group(1))
-            
-            children_match = re.search(r'(\d+)\s*位兒童', query)
-            if children_match:
-                children = int(children_match.group(1))
-            
-            # 提取預算
-            budget_match = re.search(r'(\d+)\s*到\s*(\d+)\s*元', query)
-            if budget_match:
-                budget_min = int(budget_match.group(1))
-                budget_max = int(budget_match.group(2))
-            
-            result = {
-                "query": query,
-                "location": location,
-                "check_in_date": check_in_date,
-                "check_out_date": check_out_date,
-                "adults": adults,
-                "children": children,
-                "budget_min": budget_min,
-                "budget_max": budget_max,
-                "hotel_types": None,
-                "facilities": None,
-                "special_requirements": None
-            }
-            
-            if self.verbose:
-                print(f"[_extract_hotel_parameters_llm] 備用提取結果: {result}")
-            
-            return result
+            # 將 Pydantic 模型轉換為字典
+            return result.model_dump()
         except Exception as e:
             if self.verbose:
                 print(f"[_extract_hotel_parameters_llm] 提取旅宿參數時發生錯誤: {str(e)}")
                 import traceback
                 print(traceback.format_exc())
             
-            # 發生錯誤時，返回默認值
-            result = {
-                "query": query,
-                "location": None,
-                "check_in_date": None,
-                "check_out_date": None,
-                "adults": None,
-                "children": None,
-                "budget_min": None,
-                "budget_max": None,
-                "hotel_types": None,
-                "facilities": None,
-                "special_requirements": None
-            }
-            
-            if self.verbose:
-                print(f"[_extract_hotel_parameters_llm] 錯誤後的默認結果: {result}")
-            
-            return result
+            # 重新拋出異常，不使用備用方案
+            raise
     
     def _extract_itinerary_parameters_llm(self, query: str) -> Dict[str, Any]:
         """
@@ -523,56 +386,35 @@ class OrchestratorAgent(BaseAgent):
             如果用戶沒有明確提供某些參數，請將對應的值設為 null。
             """
             
-            # 調用 OpenAI API
-            response = openai.chat.completions.create(
+            # 使用 OpenAI 的 parse 方法
+            client = openai.OpenAI()
+            completion = client.beta.chat.completions.parse(
                 model=self.llm,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query}
                 ],
-                tools=self.llm_tools[2:3],  # 只使用 extract_itinerary_parameters 工具
-                tool_choice={"type": "function", "function": {"name": "extract_itinerary_parameters"}},
+                response_format=ItineraryParameters,
                 temperature=0.1,
                 max_tokens=1000
             )
             
-            # 獲取 LLM 回應的內容
-            message = response.choices[0].message
+            # 獲取解析後的結果
+            result = completion.choices[0].message.parsed
             
-            # 如果有 tool_calls，處理它們
-            if message.tool_calls:
-                tool_call = message.tool_calls[0]
-                if tool_call.function.name == "extract_itinerary_parameters":
-                    return json.loads(tool_call.function.arguments)
+            if self.verbose:
+                print(f"[_extract_itinerary_parameters_llm] 提取結果: {result}")
             
-            # 如果沒有 tool_calls，返回默認值
-            return {
-                "query": query,
-                "location": None,
-                "start_date": None,
-                "end_date": None,
-                "duration": None,
-                "interests": [],
-                "transportation": None,
-                "with_children": None,
-                "budget": None
-            }
+            # 將 Pydantic 模型轉換為字典
+            return result.model_dump()
         except Exception as e:
             if self.verbose:
-                print(f"提取行程參數時發生錯誤: {str(e)}")
+                print(f"[_extract_itinerary_parameters_llm] 提取行程參數時發生錯誤: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
             
-            # 發生錯誤時，返回默認值
-            return {
-                "query": query,
-                "location": None,
-                "start_date": None,
-                "end_date": None,
-                "duration": None,
-                "interests": [],
-                "transportation": None,
-                "with_children": None,
-                "budget": None
-            }
+            # 重新拋出異常，不使用備用方案
+            raise
     
     def _generate_quick_response(self, query: str) -> str:
         """
@@ -585,18 +427,32 @@ class OrchestratorAgent(BaseAgent):
             快速回應
         """
         try:
+            if self.verbose:
+                print(f"[_generate_quick_response] 開始生成快速回應...")
+            
             # 分析用戶意圖
             intent_analysis = self._analyze_user_intent(query)
             
+            if self.verbose:
+                print(f"[_generate_quick_response] 用戶意圖分析結果: {intent_analysis}")
+            
             if intent_analysis.get("needs_hotel_recommendation", False):
+                if self.verbose:
+                    print(f"[_generate_quick_response] 用戶需要旅宿推薦")
                 return "我正在為您尋找合適的旅宿選擇，請稍候..."
             elif intent_analysis.get("needs_itinerary_planning", False):
+                if self.verbose:
+                    print(f"[_generate_quick_response] 用戶需要行程規劃")
                 return "我正在為您規劃行程，請稍候..."
             else:
+                if self.verbose:
+                    print(f"[_generate_quick_response] 無法確定用戶意圖，使用通用回應")
                 return "我正在處理您的請求，請稍候..."
         except Exception as e:
             if self.verbose:
-                print(f"生成快速回應時發生錯誤: {str(e)}")
+                print(f"[_generate_quick_response] 生成快速回應時發生錯誤: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
             return "我正在處理您的請求，請稍候..."
     
     def _generate_complete_response(self, query: str) -> str:
@@ -626,7 +482,7 @@ class OrchestratorAgent(BaseAgent):
             
             if hotel_recommendation:
                 hotel_data = hotel_recommendation.get("data", {})
-                hotel_recommendation_text = hotel_data.get("recommendation", "")
+                hotel_recommendation_text = hotel_data.get("complete_response", "")
                 if hotel_recommendation_text:
                     response += f"{hotel_recommendation_text}\n\n"
                     if self.verbose:
@@ -647,7 +503,7 @@ class OrchestratorAgent(BaseAgent):
                 print(f"[_generate_complete_response] 生成完整回應時發生錯誤: {str(e)}")
                 import traceback
                 print(traceback.format_exc())
-            return "抱歉，我在處理您的請求時遇到了問題。請稍後再試或重新描述您的需求。"
+            return "抱歉，我在處理您的請求時遇到了問題。請稍後再試或換一種方式提問。"
     
     def _get_hotel_agent(self) -> Optional[BaseAgent]:
         """
@@ -679,7 +535,12 @@ class OrchestratorAgent(BaseAgent):
         """
         清除對話歷史
         """
-        self.conversation_history = []
+        # 確保 conversation_history 存在，如果不存在則創建
+        if not hasattr(self, 'conversation_history'):
+            self.conversation_history = []
+        else:
+            self.conversation_history = []
+        
         if self.verbose:
             print(f"{self.name} 清除了對話歷史")
             
@@ -693,8 +554,15 @@ class OrchestratorAgent(BaseAgent):
         Returns:
             回應結果
         """
+        # 確保 conversation_history 存在
+        if not hasattr(self, 'conversation_history'):
+            self.conversation_history = []
+        
         task = {
             "query": message,
             "timestamp": time.time()
         }
-        return self.execute_task(task) 
+        
+        # 執行任務並返回結果
+        result = self.execute_task(task)
+        return result 
