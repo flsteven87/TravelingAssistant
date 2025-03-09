@@ -342,15 +342,9 @@ if st.session_state.processing:
     
     # 如果有快速回應但沒有完整回應，生成完整回應
     elif not st.session_state.complete_response:
-        # 模擬處理時間和進度更新
+        # 使用 spinner 顯示處理狀態
         with st.spinner("正在生成完整回應..."):
-            # 更新進度
-            for i in range(3, 10, 1):
-                time.sleep(0.5)  # 模擬處理時間
-                st.session_state.progress = i / 10
-                st.rerun()
-            
-            # 獲取完整回應
+            # 直接獲取完整回應，不再使用模擬進度的循環
             st.session_state.complete_response = st.session_state.agent.task_result["complete_response"]
             st.session_state.progress = 1.0
         
