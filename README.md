@@ -19,6 +19,8 @@ A Multi-Agent architecture-based travel assistant system, including "Hotel Recom
 ├── requirements.txt        # List of dependencies
 ├── .env.example            # Environment variables example
 ├── .env                    # Environment variables (not included in version control)
+├── test_api.py             # API testing script
+├── test_hotel_detail.py    # Hotel detail API testing script
 └── src/                    # Source code directory
     ├── __init__.py
     ├── config.py           # System configuration
@@ -26,12 +28,16 @@ A Multi-Agent architecture-based travel assistant system, including "Hotel Recom
     │   ├── __init__.py
     │   ├── base_agent.py   # Base Agent class
     │   ├── orchestrator_agent.py  # Orchestrator Agent
-    │   └── hotel_agent.py  # Hotel Recommendation Agent
+    │   ├── hotel_agent.py  # Hotel Recommendation Agent
+    │   └── itinerary_agent.py  # Itinerary Planning Agent
     ├── api/                # API clients
     │   ├── __init__.py
     │   ├── api_client.py   # API client base class
     │   ├── hotel_api.py    # Hotel API client
     │   └── place_api.py    # Place API client
+    └── utils/              # Utility modules
+        ├── __init__.py
+        └── logging_utils.py  # Logging utilities
 ```
 
 ## Installation and Setup
@@ -102,8 +108,8 @@ The system is based on a Multi-Agent architecture and mainly includes the follow
    - Provides progressive responses
 
 3. **Specialized Agents**:
-   - Hotel Recommendation Agent: Responsible for recommending suitable accommodation options
-   - Itinerary Planning Agent: Responsible for planning surrounding attractions and activities
+   - **Hotel Recommendation Agent (HotelAgent)**: Responsible for recommending suitable accommodation options
+   - **Itinerary Planning Agent (ItineraryAgent)**: Responsible for planning surrounding attractions and activities
 
 ## API Usage
 
@@ -112,6 +118,13 @@ The system uses the following APIs:
 1. **Hotel Basic Parameters API**: Obtains parameters such as counties/cities, townships/districts, hotel types, etc.
 2. **Hotel Information API**: Obtains hotel lists, details, vacancy information, etc.
 3. **Nearby Landmark Query API**: Searches for nearby attractions and landmarks
+
+## Testing
+
+The project includes several test scripts:
+
+- `test_api.py`: Tests the basic API functionality
+- `test_hotel_detail.py`: Tests the hotel detail retrieval functionality
 
 ## Environment Variables
 
