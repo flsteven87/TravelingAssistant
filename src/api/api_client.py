@@ -86,9 +86,9 @@ class APIClient:
                         text_response = await response.text()
                         return {"data": text_response}
                     
-                    # 如果響應是列表，將其包裝在字典中
+                    # 如果響應是列表，直接返回
                     if isinstance(response_json, list):
-                        return {"data": response_json}
+                        return response_json
                     
                     # 如果響應是字典但沒有 data 欄位，添加一個
                     if isinstance(response_json, dict) and "data" not in response_json:
@@ -152,9 +152,9 @@ class APIClient:
                         text_response = await response.text()
                         return {"data": text_response}
                     
-                    # 如果響應是列表，將其包裝在字典中
+                    # 如果響應是列表，直接返回
                     if isinstance(response_json, list):
-                        return {"data": response_json}
+                        return response_json
                     
                     # 如果響應是字典但沒有 data 欄位，添加一個
                     if isinstance(response_json, dict) and "data" not in response_json:

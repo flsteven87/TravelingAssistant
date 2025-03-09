@@ -22,6 +22,9 @@ class HotelAPI:
             List[Dict[str, Any]]: 縣市列表
         """
         response = await self.client.get(HOTEL_API["counties"])
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def get_districts(self, county_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -39,6 +42,9 @@ class HotelAPI:
             params["county_id"] = county_id
             
         response = await self.client.get(HOTEL_API["districts"], params=params)
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def get_hotel_types(self) -> List[Dict[str, Any]]:
@@ -49,6 +55,9 @@ class HotelAPI:
             List[Dict[str, Any]]: 旅館類型列表
         """
         response = await self.client.get(HOTEL_API["hotel_types"])
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def get_hotel_facilities(self) -> List[str]:
@@ -59,7 +68,11 @@ class HotelAPI:
             List[str]: 飯店設施名稱列表
         """
         response = await self.client.get(HOTEL_API["hotel_facilities"])
-        facilities_data = response.get("data", [])
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            facilities_data = response
+        else:
+            facilities_data = response.get("data", [])
         
         # 從設施對象中提取名稱
         facilities_names = []
@@ -79,7 +92,11 @@ class HotelAPI:
             List[str]: 房間備品名稱列表
         """
         response = await self.client.get(HOTEL_API["room_facilities"])
-        facilities_data = response.get("data", [])
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            facilities_data = response
+        else:
+            facilities_data = response.get("data", [])
         
         # 從設施對象中提取名稱
         facilities_names = []
@@ -99,6 +116,9 @@ class HotelAPI:
             List[Dict[str, Any]]: 房間床型列表
         """
         response = await self.client.get(HOTEL_API["bed_types"])
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def get_hotels(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -112,6 +132,10 @@ class HotelAPI:
             List[Dict[str, Any]]: 旅館列表
         """
         response = await self.client.get(HOTEL_API["hotels"], params=params)
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
+            
         data = response.get("data", [])
         
         # 檢查回傳的資料結構
@@ -137,6 +161,9 @@ class HotelAPI:
         """
         params = {"name": name}
         response = await self.client.get(HOTEL_API["hotel_fuzzy_match"], params=params)
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def get_hotel_detail(self, hotel_id: str) -> Dict[str, Any]:
@@ -154,7 +181,12 @@ class HotelAPI:
             # 使用 hotels API 獲取特定旅館的詳細信息
             params = {"id": hotel_id}
             response = await self.client.get(HOTEL_API["hotels"], params=params)
-            data = response.get("data", [])
+            
+            # 處理 API 直接回傳列表的情況
+            if isinstance(response, list):
+                data = response
+            else:
+                data = response.get("data", [])
             
             # 如果返回的是列表，找到匹配的旅館
             if isinstance(data, list):
@@ -184,6 +216,9 @@ class HotelAPI:
         
         params = {"supply_ids": ",".join(supply_ids)}
         response = await self.client.get(HOTEL_API["hotel_supply"], params=params)
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
     
     async def get_plans(self, hotel_id: str, keyword: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -207,6 +242,9 @@ class HotelAPI:
                 params["keyword"] = keyword
                 
             response = await self.client.get(HOTEL_API["plans"], params=params)
+            # 處理 API 直接回傳列表的情況
+            if isinstance(response, list):
+                return response
             return response.get("data", [])
         except Exception as e:
             print(f"獲取旅館訂購方案時發生錯誤: {str(e)}")
@@ -223,4 +261,7 @@ class HotelAPI:
             List[Dict[str, Any]]: 可訂旅館空房列表
         """
         response = await self.client.get(HOTEL_API["vacancies"], params=params)
+        # 處理 API 直接回傳列表的情況
+        if isinstance(response, list):
+            return response
         return response.get("data", [])
