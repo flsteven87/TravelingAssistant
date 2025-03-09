@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import sys
 import asyncio
 import datetime
+import atexit
 
 # 添加 src 目錄到 Python 路徑
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -12,10 +13,19 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # 載入環境變數
 load_dotenv()
 
-# 導入 OrchestratorAgent 和 HotelAPI
+# 初始化日誌系統
+from src.config import init_logging
+logger = init_logging()
+
+# 導入 OrchestratorAgent、HotelAgent 和 ItineraryAgent
 from src.agents.orchestrator_agent import OrchestratorAgent
 from src.agents.hotel_agent import HotelAgent
+from src.agents.itinerary_agent import ItineraryAgent
 from src.api.hotel_api import HotelAPI
+from src.utils import logging_utils
+
+# 記錄應用程式啟動
+logging_utils.info(logger, "旅遊助手應用程式啟動")
 
 # 頁面配置
 st.set_page_config(
@@ -27,17 +37,36 @@ st.set_page_config(
 
 # 初始化 session state
 if "agent" not in st.session_state:
+    logging_utils.info(logger, "初始化 Agent")
+    
     # 創建 OrchestratorAgent
     orchestrator = OrchestratorAgent(verbose=True)
     
     # 創建 HotelAgent
     hotel_agent = HotelAgent(verbose=True)
     
-    # 將 HotelAgent 添加為 OrchestratorAgent 的協作者
+    # 創建 ItineraryAgent
+    itinerary_agent = ItineraryAgent(verbose=True)
+    
+    # 將 HotelAgent 和 ItineraryAgent 添加為 OrchestratorAgent 的協作者
     orchestrator.add_collaborator(hotel_agent)
+    orchestrator.add_collaborator(itinerary_agent)
     
     # 保存到 session state
     st.session_state.agent = orchestrator
+    
+    # 註冊 Streamlit 會話結束時的清理函數
+    def cleanup_resources():
+        logging_utils.info(logger, "正在清理資源...")
+        # 關閉 API 客戶端
+        if hasattr(hotel_agent, 'hotel_api') and hotel_agent.hotel_api and hasattr(hotel_agent.hotel_api, 'client'):
+            asyncio.run(hotel_agent.hotel_api.client.close())
+        if hasattr(itinerary_agent, 'place_api') and itinerary_agent.place_api and hasattr(itinerary_agent.place_api, 'client'):
+            asyncio.run(itinerary_agent.place_api.client.close())
+        logging_utils.info(logger, "資源清理完成")
+    
+    # 註冊清理函數
+    atexit.register(cleanup_resources)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -72,21 +101,29 @@ st.subheader("您的個人旅遊規劃專家")
 
 # 異步加載縣市和飯店類型數據
 async def load_form_data():
+    logging_utils.info(logger, "開始加載表單數據", "load_form_data")
+    
     hotel_api = HotelAPI()
     
-    # 獲取縣市列表
-    counties_task = hotel_api.get_counties()
-    
-    # 獲取飯店類型列表
-    hotel_types_task = hotel_api.get_hotel_types()
-    
-    # 等待所有任務完成
-    counties, hotel_types = await asyncio.gather(counties_task, hotel_types_task)
-    
-    # 關閉 API 客戶端
-    await hotel_api.client.close()
-    
-    return counties, hotel_types
+    try:
+        # 獲取縣市列表
+        counties_task = hotel_api.get_counties()
+        
+        # 獲取飯店類型列表
+        hotel_types_task = hotel_api.get_hotel_types()
+        
+        # 等待所有任務完成
+        counties, hotel_types = await asyncio.gather(counties_task, hotel_types_task)
+        
+        logging_utils.info(logger, "表單數據加載完成", "load_form_data", 
+                          {"counties_count": len(counties), "hotel_types_count": len(hotel_types)})
+        
+        return counties, hotel_types
+    finally:
+        # 確保 API 客戶端被關閉
+        if hotel_api and hotel_api.client:
+            await hotel_api.client.close()
+            logging_utils.info(logger, "表單數據加載 API 客戶端已關閉", "load_form_data")
 
 # 使用 Streamlit 的 spinner 顯示加載狀態
 @st.cache_data(ttl=3600)  # 緩存數據1小時
@@ -95,9 +132,12 @@ def get_form_data():
         # 使用 asyncio 運行異步函數
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        counties, hotel_types = loop.run_until_complete(load_form_data())
-        loop.close()
-        return counties, hotel_types
+        try:
+            counties, hotel_types = loop.run_until_complete(load_form_data())
+            return counties, hotel_types
+        finally:
+            # 確保事件循環被關閉
+            loop.close()
 
 # 側邊欄
 with st.sidebar:
@@ -105,6 +145,7 @@ with st.sidebar:
     
     # 如果縣市和飯店類型數據尚未加載，則加載它們
     if not st.session_state.counties or not st.session_state.hotel_types:
+        logging_utils.info(logger, "加載縣市和飯店類型數據", "sidebar")
         counties, hotel_types = get_form_data()
         st.session_state.counties = counties
         st.session_state.hotel_types = hotel_types
@@ -131,12 +172,15 @@ with st.sidebar:
         col1, col2 = st.columns(2)
         with col1:
             if st.button("修改資訊"):
+                logging_utils.info(logger, "用戶點擊修改資訊按鈕", "sidebar")
                 st.session_state.form_submitted = False
                 st.rerun()
         
         # 開始規劃按鈕
         with col2:
             if st.button("開始規劃旅程"):
+                logging_utils.info(logger, "用戶點擊開始規劃旅程按鈕", "sidebar")
+                
                 # 將表單數據轉換為自然語言查詢
                 query = f"我想去{form_data['county_name']}旅遊，入住日期是{form_data['check_in_date']}，退房日期是{form_data['check_out_date']}，"
                 query += f"有{form_data['adults']}位成人"
@@ -148,6 +192,8 @@ with st.sidebar:
                     query += f"，我喜歡的飯店類型是{', '.join(form_data['hotel_type_names'])}"
                 
                 query += f"，預算範圍是每晚{form_data['budget_min']}到{form_data['budget_max']}元。請幫我推薦適合的住宿和規劃行程。"
+                
+                logging_utils.info(logger, "生成查詢", "sidebar", {"query": query[:100] + "..."})
                 
                 # 添加用戶消息到聊天歷史
                 st.session_state.messages.append({"role": "user", "content": query})
@@ -233,6 +279,8 @@ with st.sidebar:
             submitted = st.form_submit_button("提交")
             
             if submitted:
+                logging_utils.info(logger, "用戶提交表單", "form")
+                
                 # 收集表單數據
                 form_data = {
                     "county_id": county_id,
@@ -252,107 +300,126 @@ with st.sidebar:
                 st.session_state.form_data = form_data
                 st.session_state.form_submitted = True
                 
-                # 顯示成功消息
-                st.success("表單已提交！正在處理您的請求...")
+                logging_utils.info(logger, "表單數據已保存", "form", 
+                                  {"county": form_data["county_name"], "dates": f"{form_data['check_in_date']} to {form_data['check_out_date']}"})
                 
-                # 重定向到主頁面
+                # 重新運行腳本以更新界面
                 st.rerun()
-    
-    st.divider()
-    
-    st.header("設置")
-    verbose = st.checkbox("顯示詳細日誌", value=True)
-    if verbose != st.session_state.agent.verbose:
-        st.session_state.agent.verbose = verbose
-    
-    if st.button("清除對話歷史"):
-        st.session_state.agent.clear_conversation()
-        st.session_state.messages = []
-        st.session_state.quick_response = None
-        st.session_state.complete_response = None
-        st.session_state.progress = 0.0
-        st.success("對話歷史已清除")
-    
-    st.header("關於")
-    st.write("""
-    這是一個旅遊助手應用程序，可以幫助您規劃旅行、推薦住宿和安排行程。
-    
-    使用方法：
-    1. 在側邊欄填寫旅遊資訊表單
-    2. 或直接在聊天框中輸入您的旅遊需求
-    3. 助手會在5秒內給出初步回應
-    4. 在30秒內提供完整的旅遊建議
-    
-    示例問題：
-    - 我想去台北旅遊，有什麼好的住宿推薦？
-    - 請幫我規劃一個三天兩夜的花蓮行程
-    - 我和家人想去墾丁，預算5000元，有適合的住宿嗎？
-    """)
 
-# 聊天容器
-chat_container = st.container()
+# 聊天界面
+st.divider()
 
 # 顯示聊天歷史
-with chat_container:
-    for message in st.session_state.messages:
-        if message["role"] == "user":
-            st.chat_message("user").write(message["content"])
-        else:
-            st.chat_message("assistant").write(message["content"])
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-# 進度條
+# 如果正在處理請求
 if st.session_state.processing:
-    st.progress(st.session_state.progress)
-
-# 輸入框
-user_input = st.chat_input("輸入您的旅遊需求", disabled=st.session_state.processing)
-
-# 處理用戶輸入
-if user_input and not st.session_state.processing:
-    # 設置處理狀態
-    st.session_state.processing = True
-    st.session_state.progress = 0.0
-    st.session_state.quick_response = None
-    st.session_state.complete_response = None
-    
-    # 添加用戶消息到聊天歷史
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    
-    # 重新運行腳本以更新界面
-    st.rerun()
-
-# 處理 Agent 回應
-if st.session_state.processing:
-    # 如果還沒有快速回應，生成快速回應
-    if not st.session_state.quick_response:
-        latest_user_message = st.session_state.messages[-1]["content"]
-        
-        # 使用 Agent 生成快速回應
-        with st.spinner("正在生成初步回應..."):
+    # 顯示助手的回應
+    with st.chat_message("assistant"):
+        # 如果快速回應尚未生成
+        if st.session_state.quick_response is None:
+            # 創建空白容器
+            response_container = st.empty()
+            
+            # 創建進度條
+            progress_bar = st.progress(0)
+            
+            # 獲取 Agent
+            agent = st.session_state.agent
+            
+            # 獲取最後一條用戶消息
+            user_message = st.session_state.messages[-1]["content"]
+            
+            # 記錄開始處理時間
             start_time = time.time()
-            result = st.session_state.agent.chat(latest_user_message)
-            st.session_state.quick_response = result["quick_response"]
-            st.session_state.progress = 0.3
+            
+            logging_utils.info(logger, "開始處理用戶查詢", "chat", {"query": user_message[:100] + "..."})
+            
+            # 調用 Agent 處理用戶消息
+            try:
+                result = agent.chat(user_message)
+                
+                # 獲取快速回應
+                quick_response = result.get("quick_response", "正在處理您的請求，請稍候...")
+                
+                # 更新快速回應
+                st.session_state.quick_response = quick_response
+                
+                # 顯示快速回應
+                response_container.markdown(quick_response)
+                
+                # 更新進度條
+                progress_bar.progress(0.3)
+                
+                # 獲取完整回應
+                complete_response = result.get("complete_response", "")
+                
+                # 更新完整回應
+                st.session_state.complete_response = complete_response
+                
+                # 顯示完整回應
+                response_container.markdown(complete_response)
+                
+                # 記錄結束處理時間
+                end_time = time.time()
+                execution_time = end_time - start_time
+                
+                logging_utils.info(logger, "用戶查詢處理完成", "chat", 
+                                  {"execution_time": f"{execution_time:.2f}秒", "response_length": len(complete_response)})
+                
+                # 添加助手消息到聊天歷史
+                st.session_state.messages.append({"role": "assistant", "content": complete_response})
+            except Exception as e:
+                logging_utils.error(logger, f"處理用戶查詢時發生錯誤: {str(e)}", "chat")
+                # 添加錯誤消息到聊天歷史
+                error_message = "抱歉，處理您的請求時發生了錯誤。請稍後再試。"
+                st.session_state.messages.append({"role": "assistant", "content": error_message})
+                response_container.markdown(error_message)
+            finally:
+                # 重置處理狀態
+                st.session_state.processing = False
+                st.session_state.quick_response = None
+                st.session_state.complete_response = None
+                
+                # 重新運行腳本以更新界面
+                st.rerun()
+        else:
+            # 如果完整回應已生成
+            if st.session_state.complete_response:
+                st.markdown(st.session_state.complete_response)
+            else:
+                st.markdown(st.session_state.quick_response)
+
+# 用戶輸入
+if not st.session_state.processing:
+    if user_input := st.chat_input("請輸入您的問題..."):
+        # 添加用戶消息到聊天歷史
+        st.session_state.messages.append({"role": "user", "content": user_input})
         
-        # 添加快速回應到聊天歷史
-        st.session_state.messages.append({"role": "assistant", "content": st.session_state.quick_response})
+        logging_utils.info(logger, "收到用戶輸入", "chat_input", {"input": user_input[:100] + "..." if len(user_input) > 100 else user_input})
+        
+        # 設置處理狀態
+        st.session_state.processing = True
         
         # 重新運行腳本以更新界面
         st.rerun()
-    
-    # 如果有快速回應但沒有完整回應，生成完整回應
-    elif not st.session_state.complete_response:
-        # 使用 spinner 顯示處理狀態
-        with st.spinner("正在生成完整回應..."):
-            # 直接獲取完整回應，不再使用模擬進度的循環
-            st.session_state.complete_response = st.session_state.agent.task_result["complete_response"]
-            st.session_state.progress = 1.0
+
+# 重置按鈕
+with st.sidebar:
+    st.divider()
+    if st.button("重置對話"):
+        logging_utils.info(logger, "用戶重置對話", "reset")
         
-        # 更新最後一條助手消息為完整回應
-        st.session_state.messages[-1]["content"] = st.session_state.complete_response
+        # 清除對話歷史
+        st.session_state.agent.clear_conversation()
+        st.session_state.messages = []
         
         # 重置處理狀態
         st.session_state.processing = False
+        st.session_state.quick_response = None
+        st.session_state.complete_response = None
         
         # 重新運行腳本以更新界面
         st.rerun()

@@ -19,6 +19,10 @@ class HotelQuery(BaseModel):
     id: Optional[str] = Field(None, description="旅館 ID，用於獲取特定旅館的詳細信息")
     hotel_group_types: Optional[List[str]] = Field(None, description="旅館類型列表，例如 ['BASIC', 'SPA', 'PET_HOTEL']")
 
+class HotelDetailQuery(BaseModel):
+    """獲取旅館詳細信息的查詢參數"""
+    id: str = Field(..., description="旅館 ID，用於獲取特定旅館的詳細信息")
+
 class HotelAgent(BaseAgent):
     """
     旅宿推薦 Agent，負責處理旅宿相關查詢和推薦
@@ -64,9 +68,10 @@ class HotelAgent(BaseAgent):
     
     def _define_tools(self):
         """定義 Agent 可用的工具函數"""
-        # 旅宿 API 工具 - 只保留 get_hotels 函數
+        # 旅宿 API 工具 - 添加 get_hotel_detail 函數
         self.tools = [
-            self.get_hotels
+            self.get_hotels,
+            self.get_hotel_detail
         ]
     
     async def get_hotels(self, query: HotelQuery) -> List[Dict[str, Any]]:
@@ -92,6 +97,20 @@ class HotelAgent(BaseAgent):
         if self.verbose:
             print(f"{self.name} 正在獲取旅館列表，參數: {params}")
         return await self.hotel_api.get_hotels(params)
+    
+    async def get_hotel_detail(self, query: HotelDetailQuery) -> Dict[str, Any]:
+        """
+        獲取旅館詳細信息
+        
+        Args:
+            query: 查詢參數，包含旅館 ID
+            
+        Returns:
+            Dict[str, Any]: 旅館詳細信息
+        """
+        if self.verbose:
+            print(f"{self.name} 正在獲取旅館詳細信息，ID: {query.id}")
+        return await self.hotel_api.get_hotel_detail(query.id)
     
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -214,7 +233,7 @@ class HotelAgent(BaseAgent):
         if self.verbose:
             print(f"[_prepare_functions] 開始準備工具函數定義...")
         
-        # 只保留 get_hotels 函數定義，使用更簡單的定義方式
+        # 添加 get_hotel_detail 函數定義
         functions = [
             {
                 "type": "function",
@@ -244,6 +263,23 @@ class HotelAgent(BaseAgent):
                                 "description": "旅館類型列表，例如 ['BASIC', 'SPA', 'PET_HOTEL', 'CHECKINN', 'PARENT_CHILD_FRIENDLY', 'SUITABLE_FOR_OFFICE']"
                             }
                         }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_hotel_detail",
+                    "description": "根據旅館 ID 獲取旅館的詳細信息，包括設施、房型、圖片等。",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "description": "旅館 ID，用於獲取特定旅館的詳細信息"
+                            }
+                        },
+                        "required": ["id"]
                     }
                 }
             }
@@ -278,6 +314,7 @@ class HotelAgent(BaseAgent):
         你需要根據用戶的需求提供旅宿推薦。你可以使用以下工具來獲取旅宿信息:
         
         1. get_hotels: 獲取旅館列表，可以根據旅館類型進行篩選
+        2. get_hotel_detail: 根據旅館 ID 獲取旅館的詳細信息，包括設施、房型、圖片等
         
         旅館類型列表及其代碼:
         - BASIC: 主推
@@ -290,6 +327,7 @@ class HotelAgent(BaseAgent):
         用戶偏好的旅館類型: {hotel_types_str}
         
         請根據用戶的需求，使用 get_hotels 工具來獲取旅館信息，並在調用時使用 hotel_group_types 參數指定旅館類型。
+        如果用戶想了解特定旅館的詳細信息，請使用 get_hotel_detail 工具獲取詳細信息。
         
         回應格式要求:
         1. 使用繁體中文回應
@@ -431,6 +469,80 @@ class HotelAgent(BaseAgent):
                             
                             if len(result) > 5:
                                 content += f"...還有 {len(result) - 5} 個結果未顯示\n"
+                    elif function_name == "get_hotel_detail":
+                        # 創建查詢對象
+                        hotel_detail_query = HotelDetailQuery(**function_args)
+                        
+                        # 執行異步函數
+                        try:
+                            import asyncio
+                            
+                            # 檢查是否已經有事件循環在運行
+                            try:
+                                loop = asyncio.get_event_loop()
+                                if loop.is_running():
+                                    if self.verbose:
+                                        print(f"[HotelAgent] 事件循環已經在運行，使用 asyncio.create_task")
+                                    # 創建一個協程任務
+                                    task = asyncio.create_task(self.get_hotel_detail(hotel_detail_query))
+                                    # 等待任務完成
+                                    result = asyncio.run_coroutine_threadsafe(self.get_hotel_detail(hotel_detail_query), loop).result()
+                                else:
+                                    if self.verbose:
+                                        print(f"[HotelAgent] 事件循環未運行，使用 loop.run_until_complete")
+                                    # 使用事件循環運行協程
+                                    result = loop.run_until_complete(self.get_hotel_detail(hotel_detail_query))
+                            except RuntimeError:
+                                if self.verbose:
+                                    print(f"[HotelAgent] 無法獲取事件循環，創建新的事件循環")
+                                # 創建新的事件循環
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                # 使用新的事件循環運行協程
+                                result = loop.run_until_complete(self.get_hotel_detail(hotel_detail_query))
+                        except Exception as e:
+                            if self.verbose:
+                                print(f"[HotelAgent] 執行異步函數時發生錯誤: {str(e)}")
+                            result = {}
+                        
+                        # 將結果添加到內容中
+                        if result:
+                            name = result.get("name", "未知旅館")
+                            address = result.get("address", "地址未知")
+                            intro = result.get("intro", "無簡介")
+                            check_in = result.get("check_in", "未知")
+                            check_out = result.get("check_out", "未知")
+                            
+                            content += f"\n\n我找到了 {name} 的詳細信息:\n"
+                            content += f"地址: {address}\n"
+                            content += f"入住時間: {check_in}, 退房時間: {check_out}\n"
+                            content += f"簡介: {intro}\n"
+                            
+                            # 添加設施信息
+                            facilities = result.get("facilities", [])
+                            if facilities:
+                                content += f"\n設施:\n"
+                                for i, facility in enumerate(facilities[:10], 1):  # 只顯示前 10 個設施
+                                    if isinstance(facility, dict) and "name" in facility:
+                                        content += f"- {facility['name']}\n"
+                                    elif isinstance(facility, str):
+                                        content += f"- {facility}\n"
+                                
+                                if len(facilities) > 10:
+                                    content += f"...還有 {len(facilities) - 10} 個設施未顯示\n"
+                            
+                            # 添加房型信息
+                            room_types = result.get("suitable_room_types", [])
+                            if room_types:
+                                content += f"\n房型:\n"
+                                for i, room in enumerate(room_types[:5], 1):  # 只顯示前 5 個房型
+                                    room_name = room.get("name", "未知房型")
+                                    room_price = room.get("price", "價格未知")
+                                    room_bed = room.get("bed_type", "床型未知")
+                                    content += f"{i}. {room_name} - 價格: {room_price}, 床型: {room_bed}\n"
+                                
+                                if len(room_types) > 5:
+                                    content += f"...還有 {len(room_types) - 5} 個房型未顯示\n"
             
             # 如果沒有工具調用但用戶有提供旅館類型，則主動調用 get_hotels
             if not tools_used and hotel_type_codes:

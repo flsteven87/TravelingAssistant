@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Callable, Union
 import os
 from dotenv import load_dotenv
+from ..utils import logging_utils
 
 # 載入環境變數
 load_dotenv()
@@ -58,6 +59,9 @@ class BaseAgent(ABC):
         self.memory_store: Dict[str, Any] = {}  # Agent 的記憶/狀態存儲
         self.collaborators: List['BaseAgent'] = []  # 協作 Agent 列表
         
+        # 初始化日誌記錄器
+        self.logger = logging_utils.setup_logger(name=self.name, verbose=self.verbose)
+        
     def add_tool(self, tool: Callable) -> None:
         """
         為 Agent 添加工具函數
@@ -66,6 +70,7 @@ class BaseAgent(ABC):
             tool: 工具函數，Agent 可以調用它來完成特定任務
         """
         self.tools.append(tool)
+        logging_utils.debug(self.logger, f"添加工具: {tool.__name__}", "add_tool")
     
     def add_tools(self, tools: List[Callable]) -> None:
         """
@@ -75,6 +80,8 @@ class BaseAgent(ABC):
             tools: 工具函數列表
         """
         self.tools.extend(tools)
+        tool_names = [tool.__name__ for tool in tools]
+        logging_utils.debug(self.logger, f"批量添加工具: {tool_names}", "add_tools")
     
     def add_collaborator(self, agent: 'BaseAgent') -> None:
         """
@@ -84,6 +91,7 @@ class BaseAgent(ABC):
             agent: 協作的 Agent
         """
         self.collaborators.append(agent)
+        logging_utils.info(self.logger, f"添加協作者: {agent.name} ({agent.role})", "add_collaborator")
     
     def remember(self, key: str, value: Any) -> None:
         """
@@ -94,8 +102,8 @@ class BaseAgent(ABC):
             value: 信息的值
         """
         self.memory_store[key] = value
-        if self.verbose:
-            print(f"{self.name} 記住了: {key} = {value}")
+        logging_utils.info(self.logger, f"記住了: {key}", "remember", 
+                          {"value_type": type(value).__name__})
     
     def recall(self, key: str, default: Any = None) -> Any:
         """
@@ -109,17 +117,19 @@ class BaseAgent(ABC):
             記憶中的信息
         """
         value = self.memory_store.get(key, default)
-        if self.verbose and key in self.memory_store:
-            print(f"{self.name} 回憶起: {key} = {value}")
+        if key in self.memory_store:
+            logging_utils.info(self.logger, f"回憶起: {key}", "recall", 
+                              {"value_type": type(value).__name__})
         return value
     
     def clear_memory(self) -> None:
         """
         清除所有記憶
         """
+        memory_count = len(self.memory_store)
         self.memory_store.clear()
-        if self.verbose:
-            print(f"{self.name} 清除了所有記憶")
+        logging_utils.info(self.logger, f"清除了所有記憶", "clear_memory", 
+                          {"memory_count": memory_count})
     
     @abstractmethod
     def execute_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
@@ -150,11 +160,13 @@ class BaseAgent(ABC):
         """
         for tool in self.tools:
             if tool.__name__ == tool_name:
-                if self.verbose:
-                    print(f"{self.name} 正在使用工具: {tool_name}")
+                logging_utils.info(self.logger, f"正在使用工具: {tool_name}", "_use_tool", 
+                                  {"params": kwargs})
                 return tool(**kwargs)
         
-        raise ValueError(f"Tool '{tool_name}' not found")
+        error_msg = f"Tool '{tool_name}' not found"
+        logging_utils.error(self.logger, error_msg, "_use_tool")
+        raise ValueError(error_msg)
     
     def collaborate(self, agent: 'BaseAgent', task: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -167,8 +179,8 @@ class BaseAgent(ABC):
         Returns:
             協作結果
         """
-        if self.verbose:
-            print(f"{self.name} 正在與 {agent.name} 協作處理任務")
+        logging_utils.info(self.logger, f"正在與 {agent.name} 協作處理任務", "collaborate", 
+                          {"task_type": task.get("type", "unknown")})
         return agent.execute_task(task)
     
     def get_system_prompt(self) -> str:
