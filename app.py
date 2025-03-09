@@ -231,7 +231,7 @@ with st.sidebar:
                     "adults": adults,
                     "children": children,
                     "hotel_types": hotel_types_selected,
-                    "hotel_type_names": [next((hotel_type["name"] for hotel_type in st.session_state.hotel_types if hotel_type["type"] == type_id), "") 
+                    "hotel_type_names": [next((hotel_type["name"] for hotel_type in st.session_state.hotel_types if hotel_type["id"] == type_id), "") 
                                        for type_id in hotel_types_selected],
                     "budget_min": budget[0],
                     "budget_max": budget[1]

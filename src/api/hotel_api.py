@@ -154,12 +154,12 @@ class HotelAPI:
         模糊比對旅館名稱
         
         Args:
-            name: 旅館名稱
+            name: 旅館名稱，將作為 hotel_name 參數傳遞給 API
             
         Returns:
             List[Dict[str, Any]]: 匹配的旅館列表
         """
-        params = {"name": name}
+        params = {"hotel_name": name}
         response = await self.client.get(HOTEL_API["hotel_fuzzy_match"], params=params)
         # 處理 API 直接回傳列表的情況
         if isinstance(response, list):
