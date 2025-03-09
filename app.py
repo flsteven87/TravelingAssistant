@@ -14,6 +14,7 @@ load_dotenv()
 
 # 導入 OrchestratorAgent 和 HotelAPI
 from src.agents.orchestrator_agent import OrchestratorAgent
+from src.agents.hotel_agent import HotelAgent
 from src.api.hotel_api import HotelAPI
 
 # 頁面配置
@@ -26,7 +27,17 @@ st.set_page_config(
 
 # 初始化 session state
 if "agent" not in st.session_state:
-    st.session_state.agent = OrchestratorAgent(verbose=True)
+    # 創建 OrchestratorAgent
+    orchestrator = OrchestratorAgent(verbose=True)
+    
+    # 創建 HotelAgent
+    hotel_agent = HotelAgent(verbose=True)
+    
+    # 將 HotelAgent 添加為 OrchestratorAgent 的協作者
+    orchestrator.add_collaborator(hotel_agent)
+    
+    # 保存到 session state
+    st.session_state.agent = orchestrator
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -231,7 +242,7 @@ with st.sidebar:
                     "adults": adults,
                     "children": children,
                     "hotel_types": hotel_types_selected,
-                    "hotel_type_names": [next((hotel_type["name"] for hotel_type in st.session_state.hotel_types if hotel_type["id"] == type_id), "") 
+                    "hotel_type_names": [next((hotel_type["name"] for hotel_type in st.session_state.hotel_types if hotel_type["type"] == type_id), "") 
                                        for type_id in hotel_types_selected],
                     "budget_min": budget[0],
                     "budget_max": budget[1]
