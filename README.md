@@ -1,130 +1,129 @@
-# 旅館推薦 & 行程規劃 Multi-Agent 系統
+# Travel Assistant & Itinerary Planning Multi-Agent System
 
-這是一個基於 Multi-Agent 架構的旅遊助手系統，包含「旅宿推薦 Agent」和「行程規劃 Agent」，為用戶提供旅遊住宿與周邊探索的整合解決方案。
+A Multi-Agent architecture-based travel assistant system, including "Hotel Recommendation Agent" and "Itinerary Planning Agent," providing users with an integrated solution for travel accommodation and surrounding exploration.
 
-## 系統特點
+## System Features
 
-- 在 5 秒內回應用戶的初步查詢
-- 在 30 秒內提供完整建議
-- 協調多個專業 Agent 提供整合服務
-- 提供漸進式回應，即使在完整結果尚未準備好時也能提供即時反饋
-- 最終輸出包含：推薦住宿選項、周邊景點安排、交通建議
-- 提供結構化表單，方便用戶輸入詳細的旅遊需求
+- Responds to user queries within 5 seconds
+- Provides complete recommendations within 30 seconds
+- Coordinates multiple specialized agents to provide integrated services
+- Delivers progressive responses, providing immediate feedback even when complete results are not yet ready
+- Final output includes: recommended accommodation options, surrounding attractions, and transportation suggestions
+- Provides a structured form for users to input detailed travel requirements
 
-## 目錄結構
+## Directory Structure
 
 ```
 .
-├── app.py                  # Streamlit 應用程序入口
-├── requirements.txt        # 依賴項列表
-├── .env.example            # 環境變數範例
-├── .env                    # 環境變數（不包含在版本控制中）
-└── src/                    # 源代碼目錄
+├── app.py                  # Streamlit application entry point
+├── requirements.txt        # List of dependencies
+├── .env.example            # Environment variables example
+├── .env                    # Environment variables (not included in version control)
+└── src/                    # Source code directory
     ├── __init__.py
-    ├── config.py           # 系統配置
-    ├── main.py             # 主程序
-    ├── agents/             # Agent 模組
+    ├── config.py           # System configuration
+    ├── agents/             # Agent modules
     │   ├── __init__.py
-    │   ├── base_agent.py   # 基礎 Agent 類別
-    │   └── orchestrator_agent.py  # 協調者 Agent
-    ├── api/                # API 客戶端
+    │   ├── base_agent.py   # Base Agent class
+    │   ├── orchestrator_agent.py  # Orchestrator Agent
+    │   └── hotel_agent.py  # Hotel Recommendation Agent
+    ├── api/                # API clients
     │   ├── __init__.py
-    │   ├── api_client.py   # API 客戶端基礎類別
-    │   ├── hotel_api.py    # 旅館 API 客戶端
-    │   └── place_api.py    # 地點 API 客戶端
-    └── utils/              # 工具函數
+    │   ├── api_client.py   # API client base class
+    │   ├── hotel_api.py    # Hotel API client
+    │   └── place_api.py    # Place API client
 ```
 
-## 安裝與設置
+## Installation and Setup
 
-1. 克隆此倉庫：
+1. Clone this repository:
    ```bash
    git clone <repository-url>
    cd <repository-directory>
    ```
 
-2. 安裝依賴項：
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-3. 設置環境變數：
+3. Set up environment variables:
    ```bash
    cp .env.example .env
    ```
-   然後編輯 `.env` 文件，填入您的 OpenAI API 密鑰和旅遊 API 密鑰。
+   Then edit the `.env` file and fill in your OpenAI API key and travel API key.
 
-## 運行應用程序
+## Running the Application
 
 ```bash
 streamlit run app.py
 ```
 
-應用程序將在 http://localhost:8501 啟動。
+The application will start at http://localhost:8501.
 
-## 使用方法
+## Usage
 
-系統提供兩種方式與旅遊助手互動：
+The system provides two ways to interact with the travel assistant:
 
-### 方法一：使用側邊欄表單
+### Method 1: Using the Sidebar Form
 
-1. 在應用程序側邊欄的「旅遊資訊表單」部分填寫以下資訊：
-   - 目標旅遊縣市（從 API 獲取的縣市列表中選擇）
-   - 入住和退房日期
-   - 成人和兒童數量
-   - 喜歡的飯店類型（從 API 獲取的飯店類型列表中選擇）
-   - 每晚預算範圍
-2. 點擊「提交」按鈕
-3. 確認資訊無誤後，點擊「開始規劃旅程」
-4. 系統會自動生成查詢並提供旅遊建議
+1. Fill in the following information in the "Travel Information Form" section of the application sidebar:
+   - Target travel county/city (select from the list of counties/cities obtained from the API)
+   - Check-in and check-out dates
+   - Number of adults and children
+   - Preferred hotel types (select from the list of hotel types obtained from the API)
+   - Nightly budget range
+2. Click the "Submit" button
+3. After confirming the information is correct, click "Start Planning Trip"
+4. The system will automatically generate a query and provide travel recommendations
 
-### 方法二：直接聊天
+### Method 2: Direct Chat
 
-1. 在主界面的聊天輸入框中輸入您的旅遊需求
-2. 助手會在 5 秒內給出初步回應
-3. 在 30 秒內提供完整的旅遊建議
+1. Enter your travel requirements in the chat input box on the main interface
+2. The assistant will provide an initial response within 5 seconds
+3. Complete travel recommendations will be provided within 30 seconds
 
-示例問題：
-- 我想去台北旅遊，有什麼好的住宿推薦？
-- 請幫我規劃一個三天兩夜的花蓮行程
-- 我和家人想去墾丁，預算 5000 元，有適合的住宿嗎？
+Example questions:
+- I want to travel to Taipei, what are some good accommodation recommendations?
+- Please help me plan a three-day, two-night itinerary for Hualien
+- My family and I want to go to Kenting with a budget of NT$5,000, are there suitable accommodations?
 
-## 架構設計
+## Architecture Design
 
-系統基於 Multi-Agent 架構，主要包含以下組件：
+The system is based on a Multi-Agent architecture and mainly includes the following components:
 
-1. **基礎 Agent (BaseAgent)**：
-   - 所有專業 Agent 的基礎類別
-   - 提供工具管理、記憶管理和任務執行等基本功能
+1. **Base Agent (BaseAgent)**:
+   - The base class for all specialized agents
+   - Provides basic functions such as tool management, memory management, and task execution
 
-2. **協調者 Agent (OrchestratorAgent)**：
-   - 負責與用戶對話，理解需求
-   - 協調其他專業 Agent 完成任務
-   - 提供漸進式回應
+2. **Orchestrator Agent (OrchestratorAgent)**:
+   - Responsible for conversing with users and understanding their needs
+   - Coordinates other specialized agents to complete tasks
+   - Provides progressive responses
 
-3. **專業 Agent**：
-   - 旅宿推薦 Agent：負責推薦適合的住宿選項
-   - 行程規劃 Agent：負責規劃周邊景點和活動
+3. **Specialized Agents**:
+   - Hotel Recommendation Agent: Responsible for recommending suitable accommodation options
+   - Itinerary Planning Agent: Responsible for planning surrounding attractions and activities
 
-## API 使用
+## API Usage
 
-系統使用以下 API：
+The system uses the following APIs:
 
-1. **旅宿基礎參數 API**：獲取縣市、鄉鎮區、旅館類型等參數
-2. **旅館資訊 API**：獲取旅館列表、詳情、空房情況等
-3. **查詢周邊地標 API**：搜尋周邊景點和地標
+1. **Hotel Basic Parameters API**: Obtains parameters such as counties/cities, townships/districts, hotel types, etc.
+2. **Hotel Information API**: Obtains hotel lists, details, vacancy information, etc.
+3. **Nearby Landmark Query API**: Searches for nearby attractions and landmarks
 
-## 環境變數
+## Environment Variables
 
-專案使用以下環境變數：
+The project uses the following environment variables:
 
-- `OPENAI_API_KEY`: OpenAI API 密鑰，用於生成回應
-- `API_KEY`: 旅遊 API 密鑰，用於獲取旅遊相關數據
+- `OPENAI_API_KEY`: OpenAI API key, used for generating responses
+- `API_KEY`: Travel API key, used for obtaining travel-related data
 
-## 開發者
+## Developer
 
-- [您的名字]
+- [Your Name]
 
-## 授權
+## License
 
-[授權信息]
+[License Information]
