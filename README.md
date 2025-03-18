@@ -1,110 +1,129 @@
-# 旅館推薦 & 行程規劃 Multi-Agent 系統
+# TravelingAssistant
 
-本專案是一個基於 Autogen 的多 Agent 系統，專門用於為用戶提供旅遊住宿與周邊探索的整合解決方案。系統包含多個專業 Agent，能夠根據用戶需求推薦適合的旅館、規劃行程，並在短時間內提供反饋。
+A smart multi-agent system for travel planning and hotel recommendations based on Autogen framework.
 
-## 功能特點
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
-- **快速回應**：在 5 秒內提供初步回應，30 秒內提供完整建議
-- **多 Agent 協作**：包含旅宿推薦 Agent 和行程規劃 Agent，由協調 Agent 統籌管理
-- **漸進式回應**：即使完整結果尚未準備好，也能提供即時反饋
-- **完整旅遊規劃**：提供旅館推薦、周邊景點安排和交通建議
-- **錯誤處理**：處理各 Agent 回應時間不一致的情況，確保系統穩定性
+## Overview
 
-## 架構設計
+TravelingAssistant is an AI-powered travel planning solution that helps users find suitable accommodations and plan itineraries based on their preferences. The system employs multiple specialized agents working in parallel to provide quick and comprehensive travel recommendations.
 
-系統架構如下：
+### Key Features
+
+- **Rapid Response**: Initial response within 5 seconds, complete recommendations within 30 seconds
+- **Multi-Agent Collaboration**: Hotel recommendation and itinerary planning agents coordinated by a central agent
+- **Progressive Feedback**: Delivers incremental responses as information becomes available
+- **Comprehensive Planning**: Provides hotel recommendations, nearby attractions, and transportation suggestions
+- **Error Handling**: Manages inconsistent response times between agents to ensure system stability
+
+## Architecture
 
 ```
 TravelingAssistant/
-├── config/            # 配置文件
-├── agents/            # Agent 定義
-│   ├── user_proxy.py      # 用戶代理
-│   ├── hotel_agent.py     # 旅宿推薦代理
-│   ├── itinerary_agent.py # 行程規劃代理
-│   └── coordinator_agent.py # 協調代理
-├── data/              # 模擬數據
-│   ├── mock_hotels.py     # 旅館數據
-│   └── mock_attractions.py # 景點數據
-├── utils/             # 工具函數
-│   └── async_helper.py    # 非同步處理工具
-├── app.py             # Streamlit 應用程序
-└── README.md          # 專案說明
+├── agents/            # Agent definitions
+│   ├── user_proxy.py      # User proxy agent
+│   ├── hotel_agent.py     # Hotel recommendation agent
+│   ├── itinerary_agent.py # Itinerary planning agent
+│   └── coordinator_agent.py # Coordination agent
+├── config/            # Configuration files
+├── data/              # Mock data
+│   ├── mock_hotels.py     # Hotel data
+│   └── mock_attractions.py # Attraction data
+├── src/               # Source code
+│   └── api/           # API client implementations
+├── utils/             # Utility functions
+│   ├── async_helper.py    # Asynchronous processing utilities
+│   └── logger_setup.py    # Logging configuration
+├── logs/              # Log files (git-ignored)
+├── app.py             # Main Streamlit application
+├── requirements.txt   # Project dependencies
+└── .env.example       # Example environment variables
 ```
 
-### Agent 職責
+### Agent Responsibilities
 
-- **用戶代理 (User Proxy Agent)**：處理用戶輸入，顯示系統回應，管理用戶體驗
-- **旅宿推薦代理 (Hotel Recommendation Agent)**：基於用戶偏好推薦最適合的住宿
-- **行程規劃代理 (Itinerary Planning Agent)**：根據用戶興趣和住宿位置推薦景點和活動
-- **協調代理 (Coordinator Agent)**：協調各專業 Agent，確保及時回應和一致性，負責格式化返回結果
+- **User Proxy Agent**: Handles user input, displays system responses, and manages the user experience
+- **Hotel Recommendation Agent**: Recommends suitable accommodations based on user preferences
+- **Itinerary Planning Agent**: Suggests attractions and activities based on user interests and hotel location
+- **Coordinator Agent**: Orchestrates specialized agents, ensures timely responses, and formats results
 
-## 通信機制
+## Communication Flow
 
-系統使用 Autogen 框架實現 Agent 之間的通信。主要流程如下：
+The system uses the Autogen framework to facilitate communication between agents:
 
-1. 用戶輸入旅遊需求
-2. 協調代理提取需求信息並分發給專業 Agent
-3. 專業 Agent 並行處理請求，協調代理管理超時和任務優先級
-4. 協調代理收集初步結果並快速回應用戶
-5. 專業 Agent 繼續處理完整結果
-6. 協調代理整合所有結果，提供完整建議
+1. User inputs travel requirements
+2. Coordinator agent extracts requirement information and distributes to specialized agents
+3. Specialized agents process requests in parallel while the coordinator manages timeouts and priorities
+4. Coordinator collects preliminary results and quickly responds to the user
+5. Specialized agents continue processing complete results
+6. Coordinator integrates all results and provides comprehensive recommendations
 
-## 響應格式化
+## Resource Management
 
-- **協調代理**負責所有響應的格式化，確保一致的用戶體驗
-- **漸進式響應**：提供初始、部分和完整三種響應類型，隨著信息收集逐步豐富內容
-- **結構化展示**：清晰分類展示旅宿、景點和交通建議，使用 Markdown 增強可讀性
+- **Task Prioritization**: Critical tasks execute first to ensure key information is presented promptly
+- **Timeout Handling**: Operations have timeouts, returning partial results rather than failing
+- **Progressive Presentation**: Delivers preliminary information first, followed by complete details
+- **Asynchronous Processing**: Uses Python's asyncio for non-blocking operations
 
-## 資源調度策略
+## Installation
 
-- **任務優先級**：重要任務優先執行，確保關鍵信息優先呈現
-- **超時處理**：為每個操作設置超時，超時後返回部分結果而非失敗
-- **漸進式呈現**：先提供初步信息，再補充完整細節
-- **非同步處理**：使用 Python 的 asyncio 實現非阻塞操作
+### Prerequisites
 
-## 安裝與使用
-
-### 前置需求
-
-- Python 3.8+
+- Python 3.8 or higher
 - Streamlit
-- Autogen 庫
+- Autogen framework
 
-### 安裝
+### Setup
 
+1. Clone the repository:
 ```bash
-# 克隆儲存庫
 git clone https://github.com/yourusername/TravelingAssistant.git
 cd TravelingAssistant
+```
 
-# 安裝依賴
+2. Set up a virtual environment (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
-### 運行
+4. Create a `.env` file based on `.env.example` and add your API keys:
+```
+OPENAI_API_KEY=your_openai_api_key
+API_KEY=your_api_key
+```
 
+## Usage
+
+Run the Streamlit application:
 ```bash
 streamlit run app.py
 ```
 
-輸入您的旅遊需求，例如：
+Enter your travel requirements in the interface, for example:
 ```
-我想明天帶家人去台北旅遊2天，預算5000元，喜歡歷史和美食。
+I want to take my family to Taipei for 2 days starting tomorrow. My budget is $5000, and we enjoy history and food.
 ```
 
-系統將快速回應並提供旅遊建議。
+The system will provide quick initial feedback followed by comprehensive travel recommendations.
 
-## 擴展和未來發展
+## Future Development
 
-- 整合真實 API 獲取最新旅館和景點數據
-- 添加更多類型的專業 Agent，如餐廳推薦、天氣預報等
-- 改進自然語言處理能力，提取更精確的用戶需求
-- 實現用戶反饋循環，根據用戶對建議的評價持續優化
+- Integration with real hotel and attraction APIs
+- Additional specialized agents for restaurant recommendations, weather forecasts, etc.
+- Enhanced natural language processing for more precise extraction of user requirements
+- User feedback loop for continuous improvement based on recommendation ratings
 
-## 貢獻
+## Contributing
 
-歡迎提交 Pull Request 或開 Issue 討論您的想法和建議。
+Contributions are welcome! Please feel free to submit a Pull Request or open an Issue to discuss your ideas and suggestions.
 
-## 授權
+## License
 
-本專案採用 MIT 授權 - 詳見 LICENSE 文件 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
