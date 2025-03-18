@@ -3,14 +3,17 @@
 """
 from typing import Dict, Any, List, Optional
 from .api_client import APIClient
-from ..config import API_BASE_URL, PLACE_API
 
 class PlaceAPI:
     """地點相關 API 封裝"""
     
     def __init__(self):
         """初始化地點 API 客戶端"""
-        self.client = APIClient(API_BASE_URL)
+        # 硬編碼 API 基礎 URL
+        self.client = APIClient("https://api.travel-assistant.example.com")
+        self.endpoints = {
+            "nearby_search": "/places/nearby"
+        }
     
     async def search_nearby_places(self, query: str, location: Optional[str] = None, radius: int = 1000) -> Dict[str, Any]:
         """
@@ -33,7 +36,7 @@ class PlaceAPI:
             data["location"] = location
         
         try:
-            response = await self.client.post(PLACE_API["nearby_search"], data=data)
+            response = await self.client.post(self.endpoints["nearby_search"], data=data)
             
             # 確保回傳的資料格式正確
             surroundings_map_images = response.get("surroundings_map_images", [])

@@ -1,142 +1,110 @@
-# Travel Assistant & Itinerary Planning Multi-Agent System
+# 旅館推薦 & 行程規劃 Multi-Agent 系統
 
-A Multi-Agent architecture-based travel assistant system, including "Hotel Recommendation Agent" and "Itinerary Planning Agent," providing users with an integrated solution for travel accommodation and surrounding exploration.
+本專案是一個基於 Autogen 的多 Agent 系統，專門用於為用戶提供旅遊住宿與周邊探索的整合解決方案。系統包含多個專業 Agent，能夠根據用戶需求推薦適合的旅館、規劃行程，並在短時間內提供反饋。
 
-## System Features
+## 功能特點
 
-- Responds to user queries within 5 seconds
-- Provides complete recommendations within 30 seconds
-- Coordinates multiple specialized agents to provide integrated services
-- Delivers progressive responses, providing immediate feedback even when complete results are not yet ready
-- Final output includes: recommended accommodation options, surrounding attractions, and transportation suggestions
-- Provides a structured form for users to input detailed travel requirements
+- **快速回應**：在 5 秒內提供初步回應，30 秒內提供完整建議
+- **多 Agent 協作**：包含旅宿推薦 Agent 和行程規劃 Agent，由協調 Agent 統籌管理
+- **漸進式回應**：即使完整結果尚未準備好，也能提供即時反饋
+- **完整旅遊規劃**：提供旅館推薦、周邊景點安排和交通建議
+- **錯誤處理**：處理各 Agent 回應時間不一致的情況，確保系統穩定性
 
-## Directory Structure
+## 架構設計
+
+系統架構如下：
 
 ```
-.
-├── app.py                  # Streamlit application entry point
-├── requirements.txt        # List of dependencies
-├── .env.example            # Environment variables example
-├── .env                    # Environment variables (not included in version control)
-├── test_api.py             # API testing script
-├── test_hotel_detail.py    # Hotel detail API testing script
-└── src/                    # Source code directory
-    ├── __init__.py
-    ├── config.py           # System configuration
-    ├── agents/             # Agent modules
-    │   ├── __init__.py
-    │   ├── base_agent.py   # Base Agent class
-    │   ├── orchestrator_agent.py  # Orchestrator Agent
-    │   ├── hotel_agent.py  # Hotel Recommendation Agent
-    │   └── itinerary_agent.py  # Itinerary Planning Agent
-    ├── api/                # API clients
-    │   ├── __init__.py
-    │   ├── api_client.py   # API client base class
-    │   ├── hotel_api.py    # Hotel API client
-    │   └── place_api.py    # Place API client
-    └── utils/              # Utility modules
-        ├── __init__.py
-        └── logging_utils.py  # Logging utilities
+TravelingAssistant/
+├── config/            # 配置文件
+├── agents/            # Agent 定義
+│   ├── user_proxy.py      # 用戶代理
+│   ├── hotel_agent.py     # 旅宿推薦代理
+│   ├── itinerary_agent.py # 行程規劃代理
+│   └── coordinator_agent.py # 協調代理
+├── data/              # 模擬數據
+│   ├── mock_hotels.py     # 旅館數據
+│   └── mock_attractions.py # 景點數據
+├── utils/             # 工具函數
+│   └── async_helper.py    # 非同步處理工具
+├── app.py             # Streamlit 應用程序
+└── README.md          # 專案說明
 ```
 
-## Installation and Setup
+### Agent 職責
 
-1. Clone this repository:
-   ```bash
-   git clone <repository-url>
-   cd <repository-directory>
-   ```
+- **用戶代理 (User Proxy Agent)**：處理用戶輸入，顯示系統回應，管理用戶體驗
+- **旅宿推薦代理 (Hotel Recommendation Agent)**：基於用戶偏好推薦最適合的住宿
+- **行程規劃代理 (Itinerary Planning Agent)**：根據用戶興趣和住宿位置推薦景點和活動
+- **協調代理 (Coordinator Agent)**：協調各專業 Agent，確保及時回應和一致性，負責格式化返回結果
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 通信機制
 
-3. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-   Then edit the `.env` file and fill in your OpenAI API key and travel API key.
+系統使用 Autogen 框架實現 Agent 之間的通信。主要流程如下：
 
-## Running the Application
+1. 用戶輸入旅遊需求
+2. 協調代理提取需求信息並分發給專業 Agent
+3. 專業 Agent 並行處理請求，協調代理管理超時和任務優先級
+4. 協調代理收集初步結果並快速回應用戶
+5. 專業 Agent 繼續處理完整結果
+6. 協調代理整合所有結果，提供完整建議
+
+## 響應格式化
+
+- **協調代理**負責所有響應的格式化，確保一致的用戶體驗
+- **漸進式響應**：提供初始、部分和完整三種響應類型，隨著信息收集逐步豐富內容
+- **結構化展示**：清晰分類展示旅宿、景點和交通建議，使用 Markdown 增強可讀性
+
+## 資源調度策略
+
+- **任務優先級**：重要任務優先執行，確保關鍵信息優先呈現
+- **超時處理**：為每個操作設置超時，超時後返回部分結果而非失敗
+- **漸進式呈現**：先提供初步信息，再補充完整細節
+- **非同步處理**：使用 Python 的 asyncio 實現非阻塞操作
+
+## 安裝與使用
+
+### 前置需求
+
+- Python 3.8+
+- Streamlit
+- Autogen 庫
+
+### 安裝
+
+```bash
+# 克隆儲存庫
+git clone https://github.com/yourusername/TravelingAssistant.git
+cd TravelingAssistant
+
+# 安裝依賴
+pip install -r requirements.txt
+```
+
+### 運行
 
 ```bash
 streamlit run app.py
 ```
 
-The application will start at http://localhost:8501.
+輸入您的旅遊需求，例如：
+```
+我想明天帶家人去台北旅遊2天，預算5000元，喜歡歷史和美食。
+```
 
-## Usage
+系統將快速回應並提供旅遊建議。
 
-The system provides two ways to interact with the travel assistant:
+## 擴展和未來發展
 
-### Method 1: Using the Sidebar Form
+- 整合真實 API 獲取最新旅館和景點數據
+- 添加更多類型的專業 Agent，如餐廳推薦、天氣預報等
+- 改進自然語言處理能力，提取更精確的用戶需求
+- 實現用戶反饋循環，根據用戶對建議的評價持續優化
 
-1. Fill in the following information in the "Travel Information Form" section of the application sidebar:
-   - Target travel county/city (select from the list of counties/cities obtained from the API)
-   - Check-in and check-out dates
-   - Number of adults and children
-   - Preferred hotel types (select from the list of hotel types obtained from the API)
-   - Nightly budget range
-2. Click the "Submit" button
-3. After confirming the information is correct, click "Start Planning Trip"
-4. The system will automatically generate a query and provide travel recommendations
+## 貢獻
 
-### Method 2: Direct Chat
+歡迎提交 Pull Request 或開 Issue 討論您的想法和建議。
 
-1. Enter your travel requirements in the chat input box on the main interface
-2. The assistant will provide an initial response within 5 seconds
-3. Complete travel recommendations will be provided within 30 seconds
+## 授權
 
-Example questions:
-- I want to travel to Taipei, what are some good accommodation recommendations?
-- Please help me plan a three-day, two-night itinerary for Hualien
-- My family and I want to go to Kenting with a budget of NT$5,000, are there suitable accommodations?
-
-## Architecture Design
-
-The system is based on a Multi-Agent architecture and mainly includes the following components:
-
-1. **Base Agent (BaseAgent)**:
-   - The base class for all specialized agents
-   - Provides basic functions such as tool management, memory management, and task execution
-
-2. **Orchestrator Agent (OrchestratorAgent)**:
-   - Responsible for conversing with users and understanding their needs
-   - Coordinates other specialized agents to complete tasks
-   - Provides progressive responses
-
-3. **Specialized Agents**:
-   - **Hotel Recommendation Agent (HotelAgent)**: Responsible for recommending suitable accommodation options
-   - **Itinerary Planning Agent (ItineraryAgent)**: Responsible for planning surrounding attractions and activities
-
-## API Usage
-
-The system uses the following APIs:
-
-1. **Hotel Basic Parameters API**: Obtains parameters such as counties/cities, townships/districts, hotel types, etc.
-2. **Hotel Information API**: Obtains hotel lists, details, vacancy information, etc.
-3. **Nearby Landmark Query API**: Searches for nearby attractions and landmarks
-
-## Testing
-
-The project includes several test scripts:
-
-- `test_api.py`: Tests the basic API functionality
-- `test_hotel_detail.py`: Tests the hotel detail retrieval functionality
-
-## Environment Variables
-
-The project uses the following environment variables:
-
-- `OPENAI_API_KEY`: OpenAI API key, used for generating responses
-- `API_KEY`: Travel API key, used for obtaining travel-related data
-
-## Developer
-
-- [Your Name]
-
-## License
-
-[License Information]
+本專案採用 MIT 授權 - 詳見 LICENSE 文件 

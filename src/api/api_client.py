@@ -5,8 +5,6 @@ import aiohttp
 import asyncio
 import time
 from typing import Dict, Any, Optional, List
-from ..config import API_HEADERS, SYSTEM_CONFIG
-from ..utils import logging_utils
 
 class APIError(Exception):
     """API 錯誤"""
@@ -27,10 +25,12 @@ class APIClient:
             base_url: API 基礎 URL
         """
         self.base_url = base_url
-        self.headers = API_HEADERS
+        self.headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
         self._session = None
         self._session_lock = asyncio.Lock()
-        self.logger = logging_utils.setup_logger("API", verbose=True)
     
     async def _get_session(self):
         """獲取或創建 aiohttp ClientSession"""
@@ -45,7 +45,7 @@ class APIClient:
             if self._session and not self._session.closed:
                 await self._session.close()
                 self._session = None
-                logging_utils.info(self.logger, "API 客戶端會話已關閉")
+                print("API 客戶端會話已關閉")
     
     async def get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -62,11 +62,10 @@ class APIClient:
             APIError: 如果 API 請求失敗
         """
         url = f"{self.base_url}{endpoint}"
-        logging_utils.log_api_request(self.logger, "GET", url, params)
+        print(f"GET 請求: {url}, 參數: {params}")
         
-        # 重試邏輯
-        max_retries = SYSTEM_CONFIG.get("max_retries", 3)
-        retry_delay = SYSTEM_CONFIG.get("retry_delay", 1)
+        max_retries = 3
+        retry_delay = 1
         
         for attempt in range(max_retries):
             start_time = time.time()
@@ -77,8 +76,7 @@ class APIClient:
                     
                     if response.status >= 400:
                         error_text = await response.text()
-                        logging_utils.error(self.logger, f"API 錯誤: {response.status} - {error_text}", "get", 
-                                           {"url": url, "status_code": response.status})
+                        print(f"API 錯誤: {response.status} - {error_text}")
                         raise APIError(
                             message=f"API request failed: {error_text}",
                             status_code=response.status,
@@ -87,10 +85,10 @@ class APIClient:
                     
                     try:
                         response_json = await response.json()
-                        logging_utils.log_api_response(self.logger, url, response.status, response_json, execution_time)
+                        print(f"API 回應: {url}, 狀態: {response.status}, 用時: {execution_time:.2f}秒")
                     except Exception as e:
                         # 如果無法解析 JSON，返回原始文本
-                        logging_utils.warning(self.logger, f"無法解析 JSON 回應: {str(e)}", "get")
+                        print(f"無法解析 JSON 回應: {str(e)}")
                         text_response = await response.text()
                         return {"data": text_response}
                     
@@ -108,12 +106,12 @@ class APIClient:
                     
                     return response_json
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logging_utils.error(self.logger, f"API 請求錯誤: {str(e)}", "get", {"url": url, "attempt": attempt + 1})
+                print(f"API 請求錯誤: {str(e)}, 嘗試: {attempt + 1}")
                 # 如果發生連接錯誤，關閉並重置會話
                 await self.close()
                 
                 if attempt < max_retries - 1:
-                    logging_utils.info(self.logger, f"重試 ({attempt + 1}/{max_retries})...", "get")
+                    print(f"重試 ({attempt + 1}/{max_retries})...")
                     await asyncio.sleep(retry_delay)
                 else:
                     raise APIError(f"API 連接錯誤: {str(e)}", status_code=500)
@@ -133,11 +131,10 @@ class APIClient:
             APIError: 如果 API 請求失敗
         """
         url = f"{self.base_url}{endpoint}"
-        logging_utils.log_api_request(self.logger, "POST", url, data=data)
+        print(f"POST 請求: {url}, 數據: {data}")
         
-        # 重試邏輯
-        max_retries = SYSTEM_CONFIG.get("max_retries", 3)
-        retry_delay = SYSTEM_CONFIG.get("retry_delay", 1)
+        max_retries = 3
+        retry_delay = 1
         
         for attempt in range(max_retries):
             start_time = time.time()
@@ -148,8 +145,7 @@ class APIClient:
                     
                     if response.status >= 400:
                         error_text = await response.text()
-                        logging_utils.error(self.logger, f"API 錯誤: {response.status} - {error_text}", "post", 
-                                           {"url": url, "status_code": response.status})
+                        print(f"API 錯誤: {response.status} - {error_text}")
                         raise APIError(
                             message=f"API request failed: {error_text}",
                             status_code=response.status,
@@ -158,10 +154,10 @@ class APIClient:
                     
                     try:
                         response_json = await response.json()
-                        logging_utils.log_api_response(self.logger, url, response.status, response_json, execution_time)
+                        print(f"API 回應: {url}, 狀態: {response.status}, 用時: {execution_time:.2f}秒")
                     except Exception as e:
                         # 如果無法解析 JSON，返回原始文本
-                        logging_utils.warning(self.logger, f"無法解析 JSON 回應: {str(e)}", "post")
+                        print(f"無法解析 JSON 回應: {str(e)}")
                         text_response = await response.text()
                         return {"data": text_response}
                     
@@ -179,12 +175,12 @@ class APIClient:
                     
                     return response_json
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                logging_utils.error(self.logger, f"API 請求錯誤: {str(e)}", "post", {"url": url, "attempt": attempt + 1})
+                print(f"API 請求錯誤: {str(e)}, 嘗試: {attempt + 1}")
                 # 如果發生連接錯誤，關閉並重置會話
                 await self.close()
                 
                 if attempt < max_retries - 1:
-                    logging_utils.info(self.logger, f"重試 ({attempt + 1}/{max_retries})...", "post")
+                    print(f"重試 ({attempt + 1}/{max_retries})...")
                     await asyncio.sleep(retry_delay)
                 else:
                     raise APIError(f"API 連接錯誤: {str(e)}", status_code=500)

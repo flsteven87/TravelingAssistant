@@ -1,5 +1,21 @@
-openai
-aiohttp
-streamlit
-python-dotenv
-pydantic
+# 基本依賴
+python-dotenv>=1.0.0
+streamlit>=1.30.0
+autogen-agentchat>=0.4.0
+autogen-ext[openai]>=0.4.0
+
+# UI 和交互
+rich>=10.11.0
+markdown>=3.5
+plotly>=5.18.0
+
+# 工具和實用程序
+tqdm>=4.66.1
+loguru>=0.7.0
+python-dateutil>=2.8.2
+pytz>=2023.3
+
+# 資料管理
+numpy>=1.24.3
+pandas>=2.0.3
+pydantic>=2.5.0

@@ -39,3 +39,10 @@ Thumbs.db
 
 # Streamlit
 .streamlit/
+
+# Log files
+logs/
+*.log
+
+# Database
+*.db
